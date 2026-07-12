@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meesho Monthly Update</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3f0f8;
+      --surface: #ffffff;
+      --border: #e4e0ec;
+      --text: #1a1523;
+      --muted: #6b6478;
+      --accent: #e2376e;
+      --accent-soft: #fce8ef;
+      --accent-dark: #b82a57;
+      --blue: #3b5bdb;
+      --blue-soft: #edf2ff;
+      --green: #2b8a3e;
+      --green-soft: #ebfbee;
+      --warn-bg: #fff9db;
+      --warn-border: #f59f00;
+      --err-bg: #fff5f5;
+      --err-border: #fa5252;
+      --ok-bg: #ebfbee;
+      --ok-border: #40c057;
+      --radius: 14px;
+      --shadow: 0 4px 24px rgba(26, 21, 35, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+      background: linear-gradient(160deg, #f8f5fc 0%, #eef2ff 50%, #f3f0f8 100%);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .page {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      margin-bottom: 0.75rem;
+    }
+
+    .hero h1 {
+      margin: 0 0 0.5rem;
+      font-size: 1.85rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      margin: 0 auto;
+      max-width: 520px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .steps-guide {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .step-pill {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.85rem;
+      border-radius: 999px;
+    }
+
+    .step-pill strong { color: var(--text); }
+
+    .flash-wrap { margin-bottom: 1.25rem; }
+
+    .flash {
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .flash::before { font-size: 1rem; flex-shrink: 0; }
+    .flash.error { background: var(--err-bg); border: 1px solid var(--err-border); color: #c92a2a; }
+    .flash.error::before { content: "✕"; }
+    .flash.ok { background: var(--ok-bg); border: 1px solid var(--ok-border); color: #2b8a3e; }
+    .flash.ok::before { content: "✓"; }
+    .flash.warn { background: var(--warn-bg); border: 1px solid var(--warn-border); color: #e67700; }
+    .flash.warn::before { content: "!"; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .card-icon.upload { background: var(--accent-soft); }
+    .card-icon.config { background: var(--blue-soft); color: var(--blue); }
+    .card-icon.gemini { background: #f3f0ff; color: #7048e8; }
+    .card-icon.download { background: var(--green-soft); color: var(--green); }
+    .card-icon.process { background: var(--accent-soft); color: var(--accent); }
+
+    .card-head h2 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .card-head p {
+      margin: 0.1rem 0 0;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .upload-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    @media (max-width: 860px) {
+      .upload-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    }
+
+    .upload-box {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      background: #faf9fc;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .upload-box:hover {
+      border-color: #d0c8e0;
+      background: #fff;
+    }
+
+    .upload-box.ready {
+      border-style: solid;
+      border-color: #b2f2bb;
+      background: var(--green-soft);
+    }
+
+    .upload-box-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.5rem;
+    }
+
+    .upload-box h3 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .upload-box .desc {
+      margin: 0 0 1rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .badge.pending { background: #f1f3f5; color: var(--muted); }
+    .badge.done { background: #d3f9d8; color: var(--green); }
+
+    .file-zone {
+      position: relative;
+      margin-bottom: 0.85rem;
+    }
+
+    .file-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .file-zone-label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      padding: 1.1rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .file-zone:hover .file-zone-label {
+      border-color: var(--accent);
+    }
+
+    .file-zone-label .icon { font-size: 1.5rem; opacity: 0.7; }
+    .file-zone-label .main { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+    .file-zone-label .sub { font-size: 0.75rem; color: var(--muted); }
+    .file-name {
+      font-size: 0.78rem;
+      color: var(--accent-dark);
+      font-weight: 600;
+      margin-top: 0.4rem;
+      word-break: break-all;
+      min-height: 1.2em;
+    }
+
+    .field { margin-bottom: 0.85rem; }
+
+    .field label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .field input[type="text"],
+    .field input[type="number"],
+    .field input[type="password"],
+    .field input[type="url"] {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      background: var(--surface);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .field input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      padding: 0.6rem 1.1rem;
+      border: none;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-accent {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(226, 55, 110, 0.3);
+    }
+
+    .btn-accent:hover { background: var(--accent-dark); }
+
+    .btn-ghost {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { background: #f8f7fa; }
+
+    .btn-purple {
+      background: #7048e8;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(112, 72, 232, 0.25);
+    }
+
+    .btn-purple:hover { background: #5f3dc4; }
+
+    .btn-block { width: 100%; }
+
+    .url-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .url-row input { flex: 1; min-width: 180px; }
+
+    .gemini-note {
+      font-size: 0.8rem;
+      color: var(--muted);
+      background: #f8f7fa;
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem;
+      margin-bottom: 1rem;
+      line-height: 1.45;
+    }
+
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.85rem;
+    }
+
+    .download-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      background: #faf9fc;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .download-card.featured {
+      border-color: #8ce99a;
+      background: var(--green-soft);
+    }
+
+    .download-card h3 {
+      margin: 0;
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    .download-card p {
+      margin: 0;
+      font-size: 0.78rem;
+      color: var(--muted);
+      flex: 1;
+      line-height: 1.45;
+    }
+
+    .download-card .btn-stage-blue {
+      background: var(--blue);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(59, 91, 219, 0.25);
+    }
+
+    .download-card .btn-stage-blue:hover { background: #364fc7; }
+
+    .download-card .btn-stage-green {
+      background: var(--green);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(43, 138, 62, 0.25);
+    }
+
+    .download-card .btn-stage-green:hover { background: #2f9e44; }
+
+    .footer-note {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+
+    .process-card { text-align: center; }
+
+    .btn-process {
+      font-size: 1.05rem;
+      padding: 1rem 1.5rem;
+      box-shadow: 0 4px 16px rgba(226, 55, 110, 0.35);
+    }
+
+    .btn-process:disabled {
+      background: #e4e0ec;
+      color: var(--muted);
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .result-card {
+      border-color: #8ce99a;
+      background: linear-gradient(160deg, #ebfbee 0%, #ffffff 100%);
+    }
+
+    .download-btn {
+      background: var(--green);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(43, 138, 62, 0.3);
+      font-size: 1rem;
+      padding: 0.9rem 1.5rem;
+      text-decoration: none;
+    }
+
+    .download-btn:hover { background: #2f9e44; }
+
+    .advanced-card { opacity: 0.92; }
+    .advanced-card .card-icon.download { background: var(--blue-soft); color: var(--blue); }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 1.45rem; }
+      .card { padding: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <header class="hero">
+      <span class="hero-badge">Local pipeline</span>
+      <h1>Meesho Monthly Update</h1>
+      <p>Upload your category data and master workbook, set the new month, click Process, then download the finished file.</p>
+      {% if last_master_month %}
+      <p class="hint" style="max-width:560px;margin:0.75rem auto 0;">
+        Master latest month: <strong>{{ last_master_month }}</strong>.
+        {% if suggested_month %}Suggested next run: <strong>{{ suggested_month }}</strong>.{% endif %}
+      </p>
+      {% endif %}
+      <p class="hint" style="max-width:560px;margin:0.5rem auto 0;font-size:0.82rem;">
+        Monthly loop: run May → download output → upload that file as master → run June with June raw CSV. No code edits needed.
+      </p>
+      <div class="steps-guide">
+        <span class="step-pill"><strong>1.</strong> Upload Raw Data &amp; Master</span>
+        <span class="step-pill"><strong>2.</strong> Set month &amp; options</span>
+        <span class="step-pill"><strong>3.</strong> Process the Data</span>
+        <span class="step-pill"><strong>4.</strong> Download</span>
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-wrap">
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-icon upload">📁</div>
+        <div>
+          <h2>Uploads</h2>
+          <p>Raw data and master are required before you can run the pipeline.</p>
+        </div>
+      </div>
+
+      <div class="upload-grid">
+
+        <div class="upload-box {% if uploads.raw.ready %}ready{% endif %}">
+          <div class="upload-box-head">
+            <h3>Raw Data</h3>
+            <span class="badge {% if uploads.raw.ready %}done{% else %}pending{% endif %}">
+              {% if uploads.raw.ready %}Ready{% else %}Required{% endif %}
+            </span>
+          </div>
+          <p class="desc">CSV or Excel with three columns: Category, Orders, GMV.</p>
+          {% if uploads.raw.name %}
+            <p class="file-name">✓ {{ uploads.raw.name }}</p>
+          {% endif %}
+          <form method="post" action="{{ url_for('upload_raw') }}" enctype="multipart/form-data">
+            <div class="file-zone">
+              <input type="file" id="raw_data" name="raw_data" accept=".csv,.xlsx,.xlsm,.xls" required
+                     onchange="showFileName(this, 'raw-fname')">
+              <label class="file-zone-label" for="raw_data">
+                <span class="icon">📊</span>
+                <span class="main">Choose file</span>
+                <span class="sub">.csv, .xlsx, .xls</span>
+              </label>
+            </div>
+            <div class="file-name" id="raw-fname"></div>
+            <button type="submit" class="btn btn-accent btn-block">Upload Raw Data</button>
+          </form>
+        </div>
+
+        <div class="upload-box {% if uploads.master.ready %}ready{% endif %}">
+          <div class="upload-box-head">
+            <h3>Master Workbook</h3>
+            <span class="badge {% if uploads.master.ready %}done{% else %}pending{% endif %}">
+              {% if uploads.master.ready %}Ready{% else %}Required{% endif %}
+            </span>
+          </div>
+          <p class="desc">Your Meesho master .xlsx. Each run starts fresh from this file.</p>
+          {% if uploads.master.name %}
+            <p class="file-name">✓ {{ uploads.master.name }}</p>
+          {% endif %}
+          <form method="post" action="{{ url_for('upload_master') }}" enctype="multipart/form-data">
+            <div class="file-zone">
+              <input type="file" id="master" name="master" accept=".xlsx,.xlsm" required
+                     onchange="showFileName(this, 'master-fname')">
+              <label class="file-zone-label" for="master">
+                <span class="icon">📗</span>
+                <span class="main">Choose workbook</span>
+                <span class="sub">.xlsx only</span>
+              </label>
+            </div>
+            <div class="file-name" id="master-fname"></div>
+            <button type="submit" class="btn btn-accent btn-block">Upload Master</button>
+          </form>
+        </div>
+
+        <div class="upload-box {% if uploads.secondary.ready %}ready{% endif %}">
+          <div class="upload-box-head">
+            <h3>Secondary File</h3>
+            <span class="badge {% if uploads.secondary.ready %}done{% else %}pending{% endif %}">
+              {% if uploads.secondary.ready %}Stored{% else %}Optional{% endif %}
+            </span>
+          </div>
+          <p class="desc">Image, audio, Excel, PDF, DOCX, or a URL. Saved for later use. Not connected to the pipeline yet.</p>
+          {% if uploads.secondary.name %}
+            <p class="file-name">✓ {{ uploads.secondary.name }}{% if uploads.secondary.source == 'url' %} (from URL){% endif %}</p>
+          {% endif %}
+          <form method="post" action="{{ url_for('upload_secondary') }}" enctype="multipart/form-data">
+            <div class="file-zone">
+              <input type="file" name="secondary" id="secondary"
+                     accept=".png,.jpg,.jpeg,.gif,.webp,.mp3,.wav,.m4a,.ogg,.aac,.xlsx,.xlsm,.xls,.pdf,.docx"
+                     onchange="showFileName(this, 'sec-fname')">
+              <label class="file-zone-label" for="secondary">
+                <span class="icon">📎</span>
+                <span class="main">Drop a file here or browse</span>
+                <span class="sub">Images, PDF, audio, Office files</span>
+              </label>
+            </div>
+            <div class="file-name" id="sec-fname"></div>
+            <button type="submit" class="btn btn-ghost btn-block">Upload Secondary File</button>
+          </form>
+          <form method="post" action="{{ url_for('upload_secondary_url') }}">
+            <div class="url-row">
+              <input type="url" name="secondary_url" placeholder="Or paste a URL (https://…)">
+              <button type="submit" class="btn btn-ghost">Save URL</button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-icon config">⚙</div>
+        <div>
+          <h2>Configuration</h2>
+          <p>These values are sent when you click a download button below.</p>
+        </div>
+      </div>
+      <form id="config-form">
+        <div class="config-grid">
+          <div class="field">
+            <label for="month">New month label</label>
+            <input type="text" id="month" name="month" value="{{ config.month }}" placeholder="May'26" required>
+          </div>
+          <div class="field">
+            <label for="total_gmv">Total GMV cross-check (INR Cr)</label>
+            <input type="text" id="total_gmv" name="total_gmv" value="{{ config.total_gmv }}" placeholder="Optional, e.g. 1250.5">
+          </div>
+          <div class="field">
+            <label for="threshold">MoM / YoY flag threshold (% change)</label>
+            <input type="number" id="threshold" name="threshold" value="{{ config.threshold }}" step="1" min="0">
+          </div>
+          <div class="field">
+            <label for="raw_sheet">Raw Excel sheet name</label>
+            <input type="text" id="raw_sheet" name="raw_sheet" value="{{ config.raw_sheet }}" placeholder="Leave blank for active sheet">
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <section class="card process-card">
+      <div class="card-head">
+        <div class="card-icon process">▶</div>
+        <div>
+          <h2>Process</h2>
+          <p>Runs the full pipeline (all six sheets) using the uploads and settings above.</p>
+        </div>
+      </div>
+      <form id="process-form" method="post" action="{{ url_for('process_data') }}">
+        <input type="hidden" name="month" class="cfg-month">
+        <input type="hidden" name="total_gmv" class="cfg-total_gmv">
+        <input type="hidden" name="threshold" class="cfg-threshold">
+        <input type="hidden" name="raw_sheet" class="cfg-raw_sheet">
+        <button type="submit" class="btn btn-accent btn-block btn-process"
+                {% if not (uploads.raw.ready or gemini_csv_ready) or not uploads.master.ready %}disabled{% endif %}>
+          Process the Data
+        </button>
+      </form>
+      {% if not (uploads.raw.ready or gemini_csv_ready) or not uploads.master.ready %}
+        <p class="footer-note" style="margin-top:0.6rem;">Upload Raw Data and the Master Workbook above to enable this.</p>
+      {% endif %}
+    </section>
+
+    {% if last_run %}
+    <section class="card result-card">
+      <div class="card-head">
+        <div class="card-icon download">✓</div>
+        <div>
+          <h2>Your file is ready</h2>
+          <p>{{ last_run.month }} processed — {{ last_run.categories }} categories written.</p>
+        </div>
+      </div>
+      {% if last_run.unmapped %}
+        <p class="gemini-note">⚠ {{ last_run.unmapped|length }} category(ies) could not be mapped and are marked orange in the Raw Working Sheet: {{ last_run.unmapped|join(', ') }}</p>
+      {% endif %}
+      {% if last_run.warnings %}
+        {% for w in last_run.warnings %}
+          <p class="gemini-note">⚠ {{ w }}</p>
+        {% endfor %}
+      {% endif %}
+      <a href="{{ url_for('download_final') }}" class="btn btn-block download-btn">
+        ⬇ Download {{ last_run.download_name }}
+      </a>
+    </section>
+    {% endif %}
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-icon gemini">✦</div>
+        <div>
+          <h2>Gemini Converter</h2>
+          <p>Turn a messy secondary file into pipeline-ready CSV.</p>
+        </div>
+      </div>
+      <p class="gemini-note">
+        Works on images, PDFs, and messy Excel from the secondary upload.
+        Your API key is used for this request only and is never saved or logged.
+        {% if gemini_csv_ready %}
+        A converted CSV is on disk and will be used if you have not uploaded raw data manually.
+        {% endif %}
+      </p>
+      <form method="post" action="{{ url_for('gemini_convert') }}">
+        <div class="field">
+          <label for="gemini_api_key">Google API key</label>
+          <input type="password" id="gemini_api_key" name="gemini_api_key" autocomplete="off" placeholder="Paste key here">
+        </div>
+        <button type="submit" class="btn btn-purple">Convert with Gemini</button>
+      </form>
+    </section>
+
+    <section class="card advanced-card">
+      <div class="card-head">
+        <div class="card-icon download">⬇</div>
+        <div>
+          <h2>Advanced: download at an earlier stage</h2>
+          <p>Optional. Each option copies the master fresh, runs the pipeline only that far, and returns the workbook — useful for checking intermediate sheets.</p>
+        </div>
+      </div>
+
+      <div class="download-grid">
+        {% for stage in stages %}
+        <div class="download-card {% if stage.id == 'full_master' %}featured{% endif %}">
+          <h3>{{ stage.label }}</h3>
+          <p>{{ stage.desc }}</p>
+          <form method="post" action="{{ url_for('run_stage', stage_id=stage.id) }}" class="stage-form">
+            <input type="hidden" name="month" class="cfg-month">
+            <input type="hidden" name="total_gmv" class="cfg-total_gmv">
+            <input type="hidden" name="threshold" class="cfg-threshold">
+            <input type="hidden" name="raw_sheet" class="cfg-raw_sheet">
+            <button type="submit" class="btn btn-block {% if stage.css == 'stage-green' %}btn-stage-green{% else %}btn-stage-blue{% endif %}">
+              Download
+            </button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+
+      <p class="footer-note">New_Meesho Masterfile is never modified. It passes through unchanged in every output.</p>
+    </section>
+
+  </div>
+
+  <script>
+    function showFileName(input, targetId) {
+      const el = document.getElementById(targetId);
+      if (!el) return;
+      el.textContent = input.files.length ? input.files[0].name : '';
+    }
+
+    document.querySelectorAll('.stage-form, #process-form').forEach(form => {
+      form.addEventListener('submit', () => {
+        const cfg = document.getElementById('config-form');
+        form.querySelector('.cfg-month').value = cfg.month.value;
+        form.querySelector('.cfg-total_gmv').value = cfg.total_gmv.value;
+        form.querySelector('.cfg-threshold').value = cfg.threshold.value;
+        form.querySelector('.cfg-raw_sheet').value = cfg.raw_sheet.value;
+      });
+    });
+  </script>
+</body>
+</html>

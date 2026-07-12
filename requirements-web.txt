@@ -1,0 +1,8 @@
+# Web UI dependencies (install manually):
+#   pip install -r requirements-web.txt
+#
+# openpyxl is already required by the pipeline.
+
+flask>=3.0
+werkzeug>=3.0
+google-generativeai>=0.8
