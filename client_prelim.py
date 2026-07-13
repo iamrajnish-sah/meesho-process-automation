@@ -7,6 +7,7 @@ Returns CPContract listing new block columns.
 from shared.anchors import find_last_month_col_in_row
 from shared.contracts import CPContract, MPVContract
 from shared.formula_utils import next_col, remap_formula_refs, shift_formula
+from shared.month_utils import validate_new_month_against_last
 from shared.style_utils import copy_cell_style
 
 CP_MONTH_HDR_ROW      = 4
@@ -18,10 +19,23 @@ CP_APR_CLIENT_MOM_COL = "BC"
 CP_APR_MOM_REF_COL    = "AW"
 
 
-def _find_cp_last_block(ws):
+def _find_cp_last_block(ws, new_month: str):
+    """
+    Locate the rightmost block in Client Prelim row 4 and validate it is the
+    expected previous month. Raises MonthSequenceError if the anchor looks wrong.
+    Uses find_last_month_col_in_row (full-row scan) because CP blocks are sparse
+    (+6-col jumps with non-month values in between), which defeats the contiguous
+    scanner used by Raw Data and Meesho Prelim View. The validation step provides
+    the same safety guarantee: a wrong anchor raises an error instead of silently
+    writing to the wrong column.
+    """
     last = find_last_month_col_in_row(ws, CP_MONTH_HDR_ROW)
     if last:
-        abs_col, _ = last
+        abs_col, last_label = last
+        validate_new_month_against_last(
+            last_label, new_month,
+            sheet="Client Prelim", header_row=CP_MONTH_HDR_ROW,
+        )
         return abs_col, next_col(abs_col), next_col(abs_col, 2), next_col(abs_col, 3)
     return CP_APR_ABS_COL, CP_APR_YOY_COL, CP_APR_EXPERT_YOY_COL, CP_APR_CLIENT_MOM_COL
 
@@ -51,7 +65,7 @@ def run(wb, new_month: str, mpv_contract: MPVContract, dry_run: bool) -> CPContr
     col_map = mpv_contract["col_map"]
     print(f"\n  [CP] Adding '{new_month}' block to Client Prelim …")
 
-    abs_col, yoy_col, exp_yoy_col, client_mom_col = _find_cp_last_block(ws)
+    abs_col, yoy_col, exp_yoy_col, client_mom_col = _find_cp_last_block(ws, new_month)
     new_abs        = next_col(abs_col,        CP_BLOCK_COL_DELTA)
     new_yoy        = next_col(yoy_col,        CP_BLOCK_COL_DELTA)
     new_exp_yoy    = next_col(exp_yoy_col,    CP_BLOCK_COL_DELTA)

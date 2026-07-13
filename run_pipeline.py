@@ -108,6 +108,7 @@ def run_full_pipeline(
     stop_after: int = 6,
     *,
     raise_on_validation_error: bool = False,
+    src_path: Optional[str] = None,
 ):
     """
     Execute C→D→E→F→G→H, passing anchor contracts forward.
@@ -141,7 +142,7 @@ def run_full_pipeline(
         return rws_result, rd_contract, mpv_contract, rws_result["unmapped"]
 
     print("\n─── STEP 4: error_margin ──────────────────────────")
-    error_margin.run(wb, new_month, mpv_contract, dry_run)
+    error_margin.run(wb, new_month, mpv_contract, dry_run, src_path=src_path)
     if not dry_run and save_step:
         save_step("Step 4")
     if stop_after <= 4:
@@ -210,12 +211,19 @@ def execute_pipeline(
     tmp_path = os.path.join(tempfile.gettempdir(), f"meesho_pipeline_{os.getpid()}.xlsx")
     shutil.copy2(master_path, tmp_path)
     wb = load_workbook(tmp_path)
+    # Ensure Excel recalculates all formulas on open instead of showing stale values.
+    wb.calculation.fullCalcOnLoad = True
+    wb.calculation.calcMode = "auto"
 
     try:
         rws_result, _, _, unmapped = run_full_pipeline(
             wb, new_month, raw_data_dict, threshold_pp,
             dry_run=False, stop_after=stop_after,
             raise_on_validation_error=True,
+            # Use original master_path (not tmp_path): openpyxl's load+save cycle
+            # strips Excel-cached formula values from formula cells.  The original
+            # master file is never touched by openpyxl so its cached values are intact.
+            src_path=master_path,
         )
     except MonthSequenceError as exc:
         raise PipelineValidationError(str(exc)) from exc
@@ -320,6 +328,8 @@ def main():
     shutil.copy2(workbook_path, tmp_path)
     print("\nLoading workbook …")
     wb = load_workbook(tmp_path)
+    wb.calculation.fullCalcOnLoad = True
+    wb.calculation.calcMode = "auto"
 
     def save_step(name: str) -> None:
         print(f"  Checkpoint after {name} …", end=" ", flush=True)
@@ -328,7 +338,10 @@ def main():
 
     try:
         _, _, _, unmapped = run_full_pipeline(
-            wb, new_month, raw_data_dict, threshold_pp, dry_run=False, save_step=save_step
+            wb, new_month, raw_data_dict, threshold_pp, dry_run=False,
+            save_step=save_step,
+            # Original master (not tmp_path) preserves Excel-cached formula values.
+            src_path=workbook_path,
         )
     except MonthSequenceError as exc:
         sys.exit(f"\n  {exc}\n")
