@@ -58,3 +58,9 @@ class CPContract(TypedDict):
     yoy_col: str
     expert_yoy_col: str
     client_mom_col: str
+
+
+class NMMContract(TypedDict):
+    """Columns written by new_meesho_masterfile.run()."""
+    new_data_col: str   # e.g. "BC" (May'26 raw data)
+    new_mom_col: str    # e.g. "EP" (May'26 MoM%)

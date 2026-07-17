@@ -44,41 +44,25 @@ def shift_formula(formula: str, col_delta: int) -> str:
 def remap_formula_refs(formula: str, col_map: Dict[str, str], col_shift: int = 0) -> str:
     """Replace explicit column letters in formulas, then optionally shift relative refs.
 
-    When col_shift is nonzero, columns substituted via col_map are protected from the
-    shift step using lowercase placeholder tokens (e.g. "zzmap0zz"). shift_formula's
-    [A-Z]+ regex cannot match lowercase tokens, so substituted columns are shifted
-    exactly once (by the col_map substitution) rather than twice (col_map + col_shift).
-
-    When col_shift is 0, takes a fast path identical to the previous behaviour.
-    All existing callers that pass col_shift=0 (copy_column_block, the second call site
-    in client_prelim.py) are therefore completely unaffected by this change.
+    Always uses placeholder tokens so that a column already substituted by col_map
+    cannot be matched and shifted again by a later iteration of the same loop (the
+    "chaining" problem that arises when a col_map value is also a col_map key, e.g.
+    {"BB": "BC", "BC": "BD"}).  shift_formula's [A-Z]+ regex also cannot match the
+    lowercase tokens, so col_shift only affects non-mapped columns.
     """
     if not formula or not isinstance(formula, str):
         return formula
 
     result = formula
-
-    if not col_shift:
-        # Fast path: no shifting needed — apply col_map directly, same as before.
-        for old, new in sorted(col_map.items(), key=lambda x: -len(x[0])):
-            for sheet_prefix in (
-                "'Meesho Prelim View'!", "'Raw Data'!",
-                "'Error Margin - Expert vs Report'!",
-            ):
-                result = result.replace(f"{sheet_prefix}{old}", f"{sheet_prefix}{new}")
-                result = result.replace(f"{sheet_prefix}${old}$", f"{sheet_prefix}${new}$")
-            result = re.sub(rf"(?<![A-Z])(\$?){old}(\$?\d+)", rf"\1{new}\2", result)
-        return result
-
-    # col_shift is nonzero: use placeholder tokens so col_map-substituted columns
-    # survive shift_formula untouched, then restore them afterwards.
     placeholder_map: Dict[str, str] = {}  # token -> final new-column letter
+
     for i, (old, new) in enumerate(sorted(col_map.items(), key=lambda x: -len(x[0]))):
         token = f"zzmap{i}zz"
         placeholder_map[token] = new
         for sheet_prefix in (
             "'Meesho Prelim View'!", "'Raw Data'!",
             "'Error Margin - Expert vs Report'!",
+            "'FK Prelim View'!",
         ):
             result = result.replace(f"{sheet_prefix}{old}", f"{sheet_prefix}{token}")
             result = result.replace(f"{sheet_prefix}${old}$", f"{sheet_prefix}${token}$")
@@ -88,10 +72,9 @@ def remap_formula_refs(formula: str, col_map: Dict[str, str], col_shift: int = 0
             result,
         )
 
-    # Shift all remaining (non-mapped) column references by col_shift.
-    result = shift_formula(result, col_shift)
+    if col_shift:
+        result = shift_formula(result, col_shift)
 
-    # Restore placeholders to their final mapped column letters.
     for token, new in placeholder_map.items():
         result = result.replace(token, new)
 

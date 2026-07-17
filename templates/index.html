@@ -611,6 +611,9 @@
         </div>
       </div>
       <form id="config-form">
+        <p class="gemini-note" style="margin-bottom:0.75rem;">
+          <strong>Pipeline run settings</strong> — month, GMV cross-check, and flag threshold.
+        </p>
         <div class="config-grid">
           <div class="field">
             <label for="month">New month label</label>
@@ -629,6 +632,36 @@
             <input type="text" id="raw_sheet" name="raw_sheet" value="{{ config.raw_sheet }}" placeholder="Leave blank for active sheet">
           </div>
         </div>
+
+        <p class="gemini-note" style="margin:1rem 0 0.75rem;">
+          <strong>FK Prelim manual inputs</strong> (required) — same path as terminal
+          <code>parse_fk_manual_inputs</code> / FK rows 7, 8, 11.
+        </p>
+        <div class="config-grid">
+          <div class="field">
+            <label for="fk_asp">ASP for new month (FK row 7)</label>
+            <input type="text" id="fk_asp" name="fk_asp" value="{{ config.fk_asp }}" placeholder="e.g. 250.96" required>
+          </div>
+          <div class="field">
+            <label for="fk_aov">AoV for new month (FK row 8)</label>
+            <input type="text" id="fk_aov" name="fk_aov" value="{{ config.fk_aov }}" placeholder="e.g. 265.76" required>
+          </div>
+          <div class="field">
+            <label for="fk_cancel">Cancellation % for new month (FK row 11)</label>
+            <input type="text" id="fk_cancel" name="fk_cancel" value="{{ config.fk_cancel }}" placeholder="e.g. 13.95 or 0.1395" required>
+          </div>
+        </div>
+
+        <p class="gemini-note" style="margin:1rem 0 0.75rem;">
+          <strong>Column visibility</strong> — months listed here stay visible; all other month
+          columns are hidden (not deleted) via <code>hide_month_columns_interactive</code>.
+        </p>
+        <div class="config-grid">
+          <div class="field" style="grid-column: 1 / -1;">
+            <label for="visible_months">Months to keep visible (comma-separated)</label>
+            <input type="text" id="visible_months" name="visible_months" value="{{ config.visible_months }}" placeholder="Apr'25, May'25, Apr'26, May'26">
+          </div>
+        </div>
       </form>
     </section>
 
@@ -645,6 +678,10 @@
         <input type="hidden" name="total_gmv" class="cfg-total_gmv">
         <input type="hidden" name="threshold" class="cfg-threshold">
         <input type="hidden" name="raw_sheet" class="cfg-raw_sheet">
+        <input type="hidden" name="fk_asp" class="cfg-fk_asp">
+        <input type="hidden" name="fk_aov" class="cfg-fk_aov">
+        <input type="hidden" name="fk_cancel" class="cfg-fk_cancel">
+        <input type="hidden" name="visible_months" class="cfg-visible_months">
         <button type="submit" class="btn btn-accent btn-block btn-process"
                 {% if not (uploads.raw.ready or gemini_csv_ready) or not uploads.master.ready %}disabled{% endif %}>
           Process the Data
@@ -721,6 +758,10 @@
             <input type="hidden" name="total_gmv" class="cfg-total_gmv">
             <input type="hidden" name="threshold" class="cfg-threshold">
             <input type="hidden" name="raw_sheet" class="cfg-raw_sheet">
+            <input type="hidden" name="fk_asp" class="cfg-fk_asp">
+            <input type="hidden" name="fk_aov" class="cfg-fk_aov">
+            <input type="hidden" name="fk_cancel" class="cfg-fk_cancel">
+            <input type="hidden" name="visible_months" class="cfg-visible_months">
             <button type="submit" class="btn btn-block {% if stage.css == 'stage-green' %}btn-stage-green{% else %}btn-stage-blue{% endif %}">
               Download
             </button>
@@ -729,7 +770,7 @@
         {% endfor %}
       </div>
 
-      <p class="footer-note">New_Meesho Masterfile is never modified. It passes through unchanged in every output.</p>
+      <p class="footer-note">Full Master runs include New_Meesho Masterfile (step 7) and column hiding using the months listed in Configuration.</p>
     </section>
 
   </div>
@@ -748,6 +789,14 @@
         form.querySelector('.cfg-total_gmv').value = cfg.total_gmv.value;
         form.querySelector('.cfg-threshold').value = cfg.threshold.value;
         form.querySelector('.cfg-raw_sheet').value = cfg.raw_sheet.value;
+        const fkAsp = form.querySelector('.cfg-fk_asp');
+        if (fkAsp) fkAsp.value = cfg.fk_asp.value;
+        const fkAov = form.querySelector('.cfg-fk_aov');
+        if (fkAov) fkAov.value = cfg.fk_aov.value;
+        const fkCancel = form.querySelector('.cfg-fk_cancel');
+        if (fkCancel) fkCancel.value = cfg.fk_cancel.value;
+        const visMonths = form.querySelector('.cfg-visible_months');
+        if (visMonths) visMonths.value = cfg.visible_months.value;
       });
     });
   </script>

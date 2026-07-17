@@ -6,7 +6,7 @@ Pipeline: raw_working_sheet → raw_data → meesho_prelim → error_margin
           → fk_prelim → client_prelim
 
 Each step returns an anchor contract passed explicitly to the next step.
-New_Meesho Masterfile is NEVER modified.
+Step 7 updates New_Meesho Masterfile (formula drag + hardcoded carry-forward).
 
 Usage:
     python run_pipeline.py "MeeshoMasterfilesampleautomation.xlsx" \\
@@ -17,7 +17,7 @@ import os
 import shutil
 import sys
 import tempfile
-from typing import Dict, Literal, Optional, Tuple
+from typing import Dict, Literal, Optional, Set, Tuple
 
 from openpyxl import load_workbook
 
@@ -25,8 +25,14 @@ import client_prelim
 import error_margin
 import fk_prelim
 import meesho_prelim
+import new_meesho_masterfile
 import raw_data
 import raw_working_sheet
+from shared.fk_manual_inputs import FKManualInputs
+from shared.hide_month_columns import (
+    hide_month_columns_interactive,
+    parse_visible_month_labels,
+)
 from shared.raw_input import load_raw_data
 from shared.month_utils import MonthSequenceError, next_month_label_after
 from shared.workbook_io import load_workbook_safe
@@ -48,8 +54,10 @@ STAGE_STOP_AFTER = {
     "raw_data": 2,
     "error_margin": 4,
     "client_prelim": 6,
-    "full_master": 6,
+    "full_master": 7,
 }
+
+FINAL_OUTPUT_FILENAME = "meesho final output check.xlsx"
 
 
 def validate_gmv_totals(
@@ -85,14 +93,14 @@ def build_change_summary(new_month: str, raw_data_dict: Dict, threshold_pp: floa
         f"  MEESHO MONTHLY UPDATE — {new_month}",
         "=" * 68, "",
         "  MODULES (in order):",
-        f"    1. raw_working_sheet.py  → 4-col block ({len(raw_data_dict)} categories)",
-        f"    2. raw_data.py           → data + MoM + YoY cols",
-        f"    3. meesho_prelim.py      → Expert + RSC + YoY sections",
-        f"    4. error_margin.py       → drag section end-cols",
-        f"    5. fk_prelim.py          → drag section end-cols",
-        f"    6. client_prelim.py      → copy prior month block +6 cols",
+        f"    1. raw_working_sheet.py     → 4-col block ({len(raw_data_dict)} categories)",
+        f"    2. raw_data.py              → data + MoM + YoY cols",
+        f"    3. meesho_prelim.py         → Expert + RSC + YoY sections",
+        f"    4. error_margin.py          → drag section end-cols",
+        f"    5. fk_prelim.py             → drag section end-cols",
+        f"    6. client_prelim.py         → copy prior month block +6 cols",
+        f"    7. new_meesho_masterfile.py → contrib insert + data/MoM drag + hardcoded gen",
         "",
-        "  NOT TOUCHED:  New_Meesho Masterfile",
         "  OUTPUT:       Meesho may output.xlsx",
         "=" * 68,
     ])
@@ -105,14 +113,18 @@ def run_full_pipeline(
     threshold_pp: float,
     dry_run: bool,
     save_step=None,
-    stop_after: int = 6,
+    stop_after: int = 7,
     *,
     raise_on_validation_error: bool = False,
     src_path: Optional[str] = None,
+    fk_manual: Optional[FKManualInputs] = None,
+    visible_months: Optional[Dict[str, Set[str]]] = None,
+    visible_month_labels: Optional[Set[str]] = None,
+    interactive: bool = True,
 ):
     """
-    Execute C→D→E→F→G→H, passing anchor contracts forward.
-    stop_after: halt after this step number (1–6).
+    Execute steps 1–7 (optionally stopping earlier), passing anchor contracts forward.
+    stop_after: halt after this step number (1–7).
     Returns (rws_result, rd_contract, mpv_contract, unmapped).
     """
     print("\n─── STEP 1: raw_working_sheet ───────────────────────")
@@ -142,14 +154,17 @@ def run_full_pipeline(
         return rws_result, rd_contract, mpv_contract, rws_result["unmapped"]
 
     print("\n─── STEP 4: error_margin ──────────────────────────")
-    error_margin.run(wb, new_month, mpv_contract, dry_run, src_path=src_path)
+    em_contract = error_margin.run(wb, new_month, mpv_contract, dry_run, src_path=src_path)
     if not dry_run and save_step:
         save_step("Step 4")
     if stop_after <= 4:
         return rws_result, rd_contract, mpv_contract, rws_result["unmapped"]
 
     print("\n─── STEP 5: fk_prelim ─────────────────────────────")
-    fk_prelim.run(wb, new_month, mpv_contract, dry_run)
+    fk_contract = fk_prelim.run(
+        wb, new_month, mpv_contract, dry_run,
+        fk_manual=fk_manual, interactive=interactive,
+    )
     if not dry_run and save_step:
         save_step("Step 5")
     if stop_after <= 5:
@@ -159,6 +174,24 @@ def run_full_pipeline(
     client_prelim.run(wb, new_month, mpv_contract, dry_run)
     if not dry_run and save_step:
         save_step("Step 6")
+    if stop_after <= 6:
+        return rws_result, rd_contract, mpv_contract, rws_result["unmapped"]
+
+    print("\n─── STEP 7: new_meesho_masterfile ─────────────────")
+    new_meesho_masterfile.run(
+        wb, new_month, mpv_contract, em_contract, fk_contract, dry_run,
+        src_path=src_path,
+    )
+    if not dry_run and save_step:
+        save_step("Step 7")
+
+    if not dry_run and stop_after >= 7:
+        hide_month_columns_interactive(
+            wb,
+            visible_months=visible_months,
+            blanket_labels=visible_month_labels,
+            interactive=interactive,
+        )
 
     return rws_result, rd_contract, mpv_contract, rws_result["unmapped"]
 
@@ -173,6 +206,9 @@ def execute_pipeline(
     total_gmv_check: Optional[float] = None,
     stage: PipelineStage = "client_prelim",
     output_path: Optional[str] = None,
+    fk_manual: Optional[FKManualInputs] = None,
+    visible_months: Optional[Dict[str, Set[str]]] = None,
+    visible_month_labels: Optional[Set[str]] = None,
 ) -> Tuple[str, list, Dict]:
     """
     Programmatic entry point for CLI and web UI.
@@ -206,7 +242,10 @@ def execute_pipeline(
             "client_prelim": "through_client_prelim",
             "full_master": "full_master",
         }[stage]
-        output_path = os.path.join(out_dir, f"Meesho {suffix} output.xlsx")
+        output_path = os.path.join(
+            out_dir,
+            FINAL_OUTPUT_FILENAME if stage == "full_master" else f"Meesho {suffix} output.xlsx",
+        )
 
     tmp_path = os.path.join(tempfile.gettempdir(), f"meesho_pipeline_{os.getpid()}.xlsx")
     shutil.copy2(master_path, tmp_path)
@@ -220,10 +259,11 @@ def execute_pipeline(
             wb, new_month, raw_data_dict, threshold_pp,
             dry_run=False, stop_after=stop_after,
             raise_on_validation_error=True,
-            # Use original master_path (not tmp_path): openpyxl's load+save cycle
-            # strips Excel-cached formula values from formula cells.  The original
-            # master file is never touched by openpyxl so its cached values are intact.
             src_path=master_path,
+            fk_manual=fk_manual,
+            visible_months=visible_months,
+            visible_month_labels=visible_month_labels,
+            interactive=False,
         )
     except MonthSequenceError as exc:
         raise PipelineValidationError(str(exc)) from exc
@@ -262,7 +302,21 @@ def main():
     parser.add_argument("--raw-sheet", dest="raw_sheet", default=None)
     parser.add_argument("--threshold", type=float, default=45.0,
                         help="MoM/YoY %% change threshold for red flag + note (default 45)")
+    parser.add_argument("--output", dest="output_path", default=None,
+                        help=f"Output file path (default: {FINAL_OUTPUT_FILENAME})")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--fk-asp", type=float, default=None,
+                        help="FK Prelim ASP for new month (row 7); prompts if omitted")
+    parser.add_argument("--fk-aov", type=float, default=None,
+                        help="FK Prelim AoV for new month (row 8)")
+    parser.add_argument("--fk-cancel", type=float, default=None,
+                        help="FK Prelim Cancellation %% for new month (row 11); decimal or %%")
+    parser.add_argument(
+        "--visible-months",
+        dest="visible_months_raw",
+        default=None,
+        help='Comma-separated month labels to keep visible (default: Apr\'25,May\'25,Apr\'26,May\'26)',
+    )
     args = parser.parse_args()
 
     workbook_path = args.workbook
@@ -294,6 +348,15 @@ def main():
         except (ValueError, EOFError):
             pass
 
+    fk_manual_cli: Optional[FKManualInputs] = None
+    if args.fk_asp is not None and args.fk_aov is not None and args.fk_cancel is not None:
+        from shared.fk_manual_inputs import parse_fk_manual_inputs
+        fk_manual_cli = parse_fk_manual_inputs(
+            str(args.fk_asp), str(args.fk_aov), str(args.fk_cancel),
+        )
+
+    visible_labels_cli = parse_visible_month_labels(args.visible_months_raw or "")
+
     print("\n" + build_change_summary(new_month, raw_data_dict, threshold_pp))
 
     if dry_run:
@@ -307,7 +370,10 @@ def main():
         return
 
     out_dir  = os.path.dirname(os.path.abspath(workbook_path)) or "."
-    out_path = os.path.join(out_dir, "Meesho may output.xlsx")
+    out_path = args.output_path if args.output_path else os.path.join(
+        out_dir,
+        FINAL_OUTPUT_FILENAME,
+    )
 
     for path, label in [(out_path, "output file"), (workbook_path, "master file")]:
         if os.path.exists(path) or path == workbook_path:
@@ -340,8 +406,10 @@ def main():
         _, _, _, unmapped = run_full_pipeline(
             wb, new_month, raw_data_dict, threshold_pp, dry_run=False,
             save_step=save_step,
-            # Original master (not tmp_path) preserves Excel-cached formula values.
             src_path=workbook_path,
+            fk_manual=fk_manual_cli,
+            visible_month_labels=visible_labels_cli,
+            interactive=(fk_manual_cli is None),
         )
     except MonthSequenceError as exc:
         sys.exit(f"\n  {exc}\n")

@@ -18,6 +18,11 @@ from flask import Flask, flash, redirect, render_template, request, send_file, s
 
 import gemini_ingest
 import web_uploads
+from shared.hide_month_columns import (
+    DEFAULT_VISIBLE_MONTH_LABELS,
+    parse_visible_month_labels,
+)
+from run_pipeline import FINAL_OUTPUT_FILENAME
 from shared.month_utils import detect_suggested_new_month
 from shared.workbook_io import load_workbook_safe
 
@@ -61,9 +66,9 @@ STAGES = [
     {
         "id": "full_master",
         "label": "Full Master",
-        "desc": "Final deliverable. New_Meesho Masterfile is included unchanged.",
+        "desc": "Final deliverable including New_Meesho Masterfile (step 7).",
         "css": "stage-green",
-        "download_name": "Meesho full_master output.xlsx",
+        "download_name": FINAL_OUTPUT_FILENAME,
     },
 ]
 
@@ -104,13 +109,29 @@ def _build_upload_state(upload_id: str) -> dict:
     }
 
 
+DEFAULT_VISIBLE_MONTHS_TEXT = ", ".join(sorted(DEFAULT_VISIBLE_MONTH_LABELS))
+
+
 def _config_from_form() -> dict:
     return {
         "month": request.form.get("month", "May'26").strip(),
         "total_gmv": request.form.get("total_gmv", "").strip(),
         "threshold": request.form.get("threshold", "45") or "45",
         "raw_sheet": request.form.get("raw_sheet", "").strip() or None,
+        "fk_asp": request.form.get("fk_asp", "").strip(),
+        "fk_aov": request.form.get("fk_aov", "").strip(),
+        "fk_cancel": request.form.get("fk_cancel", "").strip(),
+        "visible_months": request.form.get("visible_months", DEFAULT_VISIBLE_MONTHS_TEXT).strip(),
     }
+
+
+def _fk_manual_from_config(cfg: dict):
+    """Build FKManualInputs when stage needs FK Prelim; None for raw_data-only runs."""
+    from shared.fk_manual_inputs import parse_fk_manual_inputs
+
+    if not cfg.get("fk_asp") or not cfg.get("fk_aov") or not cfg.get("fk_cancel"):
+        return None
+    return parse_fk_manual_inputs(cfg["fk_asp"], cfg["fk_aov"], cfg["fk_cancel"])
 
 
 def _run_pipeline(*args, **kwargs):
@@ -148,6 +169,10 @@ def index():
         "total_gmv": "",
         "threshold": "45",
         "raw_sheet": "",
+        "fk_asp": "",
+        "fk_aov": "",
+        "fk_cancel": "",
+        "visible_months": DEFAULT_VISIBLE_MONTHS_TEXT,
     }
     last_run = meta.get("last_run")
     if last_run and not os.path.exists(last_run.get("output_path", "")):
@@ -286,8 +311,12 @@ def run_stage(stage_id: str):
     try:
         total_gmv = _parse_total_gmv(cfg["total_gmv"])
         threshold = float(cfg["threshold"])
-    except ValueError:
-        flash("Invalid number in Total GMV or threshold.", "error")
+        fk_manual = _fk_manual_from_config(cfg)
+        if stage_id not in ("raw_data",) and fk_manual is None:
+            flash("FK Prelim ASP, AoV, and Cancellation % are required in Configuration.", "error")
+            return redirect(url_for("index"))
+    except ValueError as exc:
+        flash(f"Invalid configuration: {exc}", "error")
         return redirect(url_for("index"))
 
     out_path = os.path.join(
@@ -305,6 +334,8 @@ def run_stage(stage_id: str):
             total_gmv_check=total_gmv,
             stage=stage_id,
             output_path=out_path,
+            fk_manual=fk_manual,
+            visible_month_labels=parse_visible_month_labels(cfg["visible_months"]),
         )
         if validation_err is not None:
             flash(str(validation_err), "error")
@@ -350,11 +381,15 @@ def process_data():
     try:
         total_gmv = _parse_total_gmv(cfg["total_gmv"])
         threshold = float(cfg["threshold"])
-    except ValueError:
-        flash("Invalid number in Total GMV or threshold.", "error")
+        fk_manual = _fk_manual_from_config(cfg)
+        if fk_manual is None:
+            flash("FK Prelim ASP, AoV, and Cancellation % are required in Configuration.", "error")
+            return redirect(url_for("index"))
+    except ValueError as exc:
+        flash(f"Invalid configuration: {exc}", "error")
         return redirect(url_for("index"))
 
-    out_path = os.path.join(web_uploads.session_dir(upload_id), "output_final.xlsx")
+    out_path = os.path.join(web_uploads.session_dir(upload_id), FINAL_OUTPUT_FILENAME)
 
     try:
         result, validation_err = _run_pipeline(
@@ -366,6 +401,8 @@ def process_data():
             total_gmv_check=total_gmv,
             stage="full_master",
             output_path=out_path,
+            fk_manual=fk_manual,
+            visible_month_labels=parse_visible_month_labels(cfg["visible_months"]),
         )
         if validation_err is not None:
             flash(str(validation_err), "error")
@@ -379,7 +416,7 @@ def process_data():
     meta = web_uploads.load_meta(upload_id)
     meta["last_run"] = {
         "output_path": out_path,
-        "download_name": f"Meesho {cfg['month']} output.xlsx",
+        "download_name": FINAL_OUTPUT_FILENAME,
         "month": cfg["month"],
         "categories": info["categories"],
         "unmapped": info["unmapped"],
